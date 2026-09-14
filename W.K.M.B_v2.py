@@ -1,8 +1,12 @@
 import tkinter as tk
 from tkinter import messagebox
+import random
 
 game_data = []
 is_hidden = False
+current_question = 0
+score = 0
+selected_answer = None
 
 def toggle_answers():
     global is_hidden
@@ -39,6 +43,73 @@ def lock_in_questions():
 
     messagebox.showinfo("Success", "Pass the laptop to Player 2!")
     setup_frame.pack_forget()
+    start_guessing_game()
+
+def start_guessing_game():
+    global current_question, score
+    current_question = 0
+    score = 0
+    guessing_frame.pack(fill="both", expand=True, pady=20)
+    show_question()
+
+def show_question():
+    global selected_answer
+    selected_answer = None
+
+    question_data = game_data[current_question]
+    question_number_label.config(
+        text=f"Question {current_question + 1} of {len(game_data)}"
+    )
+    question_label.config(text=question_data["question"])
+    feedback_label.config(text="", fg="black")
+    next_btn.config(state="disabled")
+
+    for button in answer_buttons:
+        button.pack_forget()
+
+    choices = [item["answer"] for item in game_data]
+    random.shuffle(choices)
+    for button, choice in zip(answer_buttons, choices):
+        button.config(text=choice, state="normal", bg="SystemButtonFace")
+        button.pack(fill="x", padx=35, pady=6)
+
+def choose_answer(answer):
+    global selected_answer, score
+    if selected_answer is not None:
+        return
+
+    selected_answer = answer
+    correct_answer = game_data[current_question]["answer"]
+    for button in answer_buttons:
+        if button["text"] == answer:
+            button.config(bg="light blue")
+        button.config(state="disabled")
+
+    if answer == correct_answer:
+        score += 1
+        feedback_label.config(text="Correct!", fg="green")
+    else:
+        feedback_label.config(
+            text=f"Not quite. The answer was: {correct_answer}",
+            fg="red"
+        )
+
+    next_btn.config(state="normal")
+
+def next_question():
+    global current_question
+    current_question += 1
+
+    if current_question == len(game_data):
+        guessing_frame.pack_forget()
+        messagebox.showinfo(
+            "Game Over",
+            f"You scored {score} out of {len(game_data)}!"
+        )
+        setup_frame.pack(pady=20)
+        return
+
+    show_question()
 
 root = tk.Tk()
 root.title("Who Knows Me Best?")
@@ -75,5 +146,49 @@ toggle_btn.pack(pady=10)
 
 lock_btn = tk.Button(setup_frame, text="Lock In & Pass Laptop", command=lock_in_questions)
 lock_btn.pack(pady=10)
+
+guessing_frame = tk.Frame(root)
+
+question_number_label = tk.Label(
+    guessing_frame, text="", font=("Arial", 14)
+)
+question_number_label.pack(pady=10)
+
+tk.Label(
+    guessing_frame, text="Player 2: Make your guess!",
+    font=("Arial", 18)
+).pack(pady=12)
+
+question_label = tk.Label(
+    guessing_frame, text="", font=("Arial", 16),
+    wraplength=340, justify="center"
+)
+question_label.pack(pady=25)
+
+answer_buttons = []
+for _ in range(3):
+    button = tk.Button(
+        guessing_frame, text="", font=("Arial", 13),
+        command=lambda: None
+    )
+    answer_buttons.append(button)
+
+def connect_answer_commands():
+    for button in answer_buttons:
+        button.config(command=lambda selected=button: choose_answer(selected["text"]))
+
+connect_answer_commands()
+
+feedback_label = tk.Label(
+    guessing_frame, text="", font=("Arial", 12),
+    wraplength=340, justify="center"
+)
+feedback_label.pack(pady=12)
+
+next_btn = tk.Button(
+    guessing_frame, text="Next Question",
+    command=next_question, state="disabled"
+)
+next_btn.pack(pady=15)
 
 root.mainloop()
